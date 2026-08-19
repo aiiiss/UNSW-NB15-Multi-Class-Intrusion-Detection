@@ -1,0 +1,14 @@
+# Versi di bawah ini sama dengan yang tercatat pada repositori pendamping
+# (unsw-nb15-hierarchical-decomposition); notebook ini tidak mencatat versinya.
+# Disarankan menggantinya dengan hasil `pip freeze` dari lingkungan asli.
+pandas==2.1.3
+scikit-learn==1.7.2
+xgboost==3.2.0
+lightgbm==4.6.0
+
+numpy>=1.26,<2
+matplotlib>=3.7
+seaborn>=0.13
+imbalanced-learn>=0.13
+optuna>=3.5
+jupyter>=1.0
