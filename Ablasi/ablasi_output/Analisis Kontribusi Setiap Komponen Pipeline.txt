@@ -1,0 +1,42 @@
+
+3.5.9	Analisis Kontribusi Setiap Komponen Pipeline
+Untuk mengukur kontribusi setiap komponen dalam pipeline yang dirancang, penelitian ini melakukan pengujian bertahap secara inkremental. Pengujian dirancang dengan membangun enam skenario konfigurasi pipeline, di mana setiap skenario menambahkan satu komponen baru dari skenario sebelumnya. Keenam skenario diuji pada data uji yang sama (20% dari total dataset, yaitu 51.535 baris) sehingga perbandingan antar skenario bersifat langsung dan setara. Rancangan keenam skenario dirangkum pada Tabel 3.7.
+Tabel 3. 7 Rancangan Skenario Pengujian Kontribusi Komponen Pipeline
+Kode	Nama Skenario	Komponen yang Digunakan
+B0	Baseline murni	XGBoost default, 42 fitur mentah, tanpa penanganan ketidakseimbangan kelas
+B1	+ Seleksi & rekayasa fitur	B0 dengan penambahan seleksi Top-N, rekayasa fitur, dan fitur domain (31 fitur final)
+B2	+ Penyeimbangan & tuning (dengan seleksi fitur)	B1 dengan penambahan SMOTE bertahap, class weight berbasis confidence, hyperparameter tuning (Optuna), dan cost-sensitive learning
+B3	+ Penyeimbangan & tuning (tanpa seleksi fitur)	B0 dengan penambahan SMOTE bertahap, class weight berbasis confidence, hyperparameter tuning (Optuna), dan cost-sensitive learning — sebagai kontrol untuk mengukur kontribusi seleksi fitur setelah data diseimbangkan
+B4	+ Stacking & threshold tuning (FINAL)	B2 dengan penambahan Stacking Ensemble dan threshold tuning Fuzzers-Normal — merupakan pipeline final penelitian ini
+B5	Pipeline final tanpa class weight	B4 tanpa class weight — eksperimen kontrol terisolasi untuk mengukur kontribusi class weight dalam konteks pipeline lengkap
+
+Tabel 3.7 menunjukkan bahwa skenario B0 hingga B4 membentuk urutan pengujian inkremental. Skenario B3 dirancang sebagai kontrol silang untuk memisahkan kontribusi seleksi fitur dari kontribusi penyeimbangan kelas, sedangkan skenario B5 dirancang sebagai kontrol untuk mengukur kontribusi class weight pada pipeline final. Perbandingan seluruh skenario menggunakan metrik agregat (F1-macro, Accuracy, F1-weighted, AUC-ROC, dan FPR macro) serta F1-score per kelas untuk empat kelas kunci (DoS, Exploits, Analysis, dan Backdoor). Selisih F1-macro antar skenario (ΔF1-macro) digunakan sebagai ukuran utama kontribusi setiap komponen. Hasil pengujian dilaporkan pada Subbab 4.7.3.
+
+
+
+
+
+
+4.7.3	Analisis Kontribusi Setiap Komponen Pipeline
+Berdasarkan enam skenario konfigurasi pipeline yang telah dirancang pada Subbab 3.5.8 (Tabel 3.7), dilakukan pengujian untuk mengukur kontribusi setiap komponen terhadap kinerja klasifikasi. Setiap skenario diuji pada data uji yang sama (51.535 baris) menggunakan metrik agregat (Accuracy, F1-macro, F1-weighted, AUC-ROC, FPR) dan F1-score untuk empat kelas kunci (DoS, Exploits, Analysis, Backdoor). Hasil pengujian dirangkum pada Tabel 4.22.
+Tabel 4. 22 Hasil Pengujian Skenario Konfigurasi Pipeline
+Metrik	B0	B1	B2	B3	B4 (FINAL)	B5
+Metrik Agregat						
+Accuracy	0,8325	0,8314	0,8177	0,8188	0,8255	0,8272
+F1-macro	0,5823	0,5845	0,6114	0,6033	0,6258	0,6243
+F1-weighted	0,8127	0,8114	0,8190	0,8200	0,8316	0,8336
+AUC-ROC	0,9709	0,9702	0,9686	0,9680	0,9755	0,9741
+FPR (macro)	0,0211	0,0212	0,0218	0,0217	0,0202	0,0199
+F1-Score Kelas Kunci						
+F1-DoS	0,2025	0,1925	0,4696	0,4619	0,4975	0,5017
+F1-Exploits	0,7421	0,7423	0,6959	0,6966	0,7017	0,7096
+F1-Analysis	0,1729	0,1512	0,1710	0,1863	0,1516	0,1331
+F1-Backdoor	0,1631	0,1705	0,1829	0,1500	0,1326	0,1272
+
+Pembahasan hasil pada Tabel 4.22 diuraikan berdasarkan pengaruh setiap tahap penambahan komponen.
+Pengaruh Seleksi dan Rekayasa Fitur (B0 → B1). Penambahan seleksi fitur Top-N, rekayasa fitur berbasis rasio dan laju, serta fitur berbasis domain menghasilkan peningkatan F1-macro yang relatif terbatas, yaitu dari 0,5823 menjadi 0,5845 atau sebesar +0,0022. Peningkatan yang terbatas ini berkaitan dengan kondisi model baseline pada B0 yang masih menggunakan konfigurasi default XGBoost tanpa mekanisme penanganan ketidakseimbangan kelas. Kondisi tersebut menyebabkan pemanfaatan fitur tambahan belum optimal, khususnya dalam membedakan kelas minoritas. Dengan demikian, kontribusi seleksi dan rekayasa fitur belum terlihat secara signifikan pada tahap awal dan perlu dianalisis kembali setelah diterapkan mekanisme penyeimbangan kelas.
+Pengaruh Penyeimbangan Kelas dan Hyperparameter Tuning (B1 → B2). Penambahan SMOTE secara bertahap, class weight berbasis confidence, hyperparameter tuning menggunakan Optuna, dan cost-sensitive learning menghasilkan peningkatan F1-macro terbesar dibandingkan tahapan ablasi lainnya, yaitu dari 0,5845 menjadi 0,6114 atau sebesar +0,0269. Peningkatan paling besar pada metrik per kelas terjadi pada F1-DoS yang meningkat dari 0,1925 menjadi 0,4696 atau sebesar +0,2771. Peningkatan juga terjadi pada F1-Backdoor dari 0,1705 menjadi 0,1829 (+0,0124) dan F1-Analysis dari 0,1512 menjadi 0,1710 (+0,0198). Hasil tersebut menunjukkan bahwa penerapan mekanisme penanganan ketidakseimbangan kelas dan optimasi model memberikan kontribusi penting terhadap peningkatan kinerja klasifikasi, terutama pada kelas serangan yang memiliki tingkat kesalahan klasifikasi relatif tinggi.
+Pengaruh Seleksi Fitur setelah Data Diseimbangkan (B2 vs B3). Skenario B3 digunakan untuk menganalisis kontribusi seleksi fitur setelah penerapan mekanisme penyeimbangan kelas dan komponen optimasi lainnya. Pada skenario ini, seluruh komponen B2 dipertahankan, kecuali seleksi dan rekayasa fitur. Perbandingan antara B2 dan B3 menunjukkan bahwa penerapan seleksi fitur memberikan peningkatan F1-macro dari 0,6033 menjadi 0,6114 atau sebesar +0,0081. Namun demikian, terdapat penurunan pada F1-Analysis dari 0,1863 menjadi 0,1710 atau sebesar −0,0153. Sebaliknya, peningkatan terbesar pada metrik per kelas terlihat pada F1-Backdoor, yaitu dari 0,1500 menjadi 0,1829 atau sebesar +0,0329. Hasil ini menunjukkan bahwa seleksi dan rekayasa fitur tetap memberikan kontribusi terhadap kinerja klasifikasi setelah data diseimbangkan, meskipun pengaruhnya berbeda pada masing-masing kelas serangan.
+Pengaruh Stacking Ensemble dan Threshold Tuning (B2 → B4). Penerapan arsitektur stacking ensemble dan threshold tuning pada pasangan Fuzzers-Normal menghasilkan peningkatan F1-macro dari 0,6114 menjadi 0,6258 atau sebesar +0,0144. Peningkatan tersebut didukung oleh kenaikan F1-DoS dari 0,4696 menjadi 0,4975 (+0,0279) dan F1-Exploits dari 0,6959 menjadi 0,7017 (+0,0058). Selain itu, FPR macro mengalami penurunan dari 0,0218 menjadi 0,0202 yang menunjukkan adanya pengurangan false alarm. Namun, penurunan kinerja terjadi pada F1-Analysis dan F1-Backdoor, masing-masing dari 0,1710 menjadi 0,1516 dan dari 0,1829 menjadi 0,1326. Penurunan tersebut menunjukkan bahwa penerapan stacking ensemble dapat menghasilkan keputusan klasifikasi yang lebih konservatif pada kelas minoritas dengan jumlah sampel yang terbatas.
+Pengaruh Class Weight pada Pipeline Final (B4 vs B5). Skenario B5 digunakan sebagai eksperimen kontrol terisolasi untuk menganalisis kontribusi class weight pada pipeline lengkap. Perbandingan antara B4 dengan class weight dan B5 tanpa class weight menunjukkan adanya trade-off pada performa per kelas. Penerapan class weight meningkatkan F1-Analysis dari 0,1331 menjadi 0,1516 (+0,0185) dan F1-Backdoor dari 0,1272 menjadi 0,1326 (+0,0054). Sebaliknya, F1-DoS menurun dari 0,5017 menjadi 0,4975 (−0,0042) dan F1-Exploits menurun dari 0,7096 menjadi 0,7017 (−0,0079). Perbedaan F1-macro antara kedua skenario relatif kecil, yaitu 0,6243 dan 0,6258 dengan selisih sebesar 0,0015. Meskipun demikian, class weight tetap dipertahankan dalam pipeline final karena memberikan peningkatan pada kelas Analysis dan Backdoor yang menjadi fokus evaluasi dalam penelitian ini, khususnya dalam konteks penanganan kelas dengan kinerja klasifikasi yang lebih rendah.
+Secara keseluruhan, hasil analisis kontribusi pada Tabel 4.22 menunjukkan bahwa setiap komponen yang diterapkan pada pipeline final memberikan pengaruh terhadap kinerja klasifikasi, meskipun besarnya kontribusi berbeda pada setiap komponen. Penyeimbangan kelas dan optimasi model pada tahap B1 → B2 memberikan peningkatan F1-macro terbesar, sedangkan penerapan stacking ensemble dan threshold tuning pada tahap B2 → B4 memberikan peningkatan terbesar berikutnya. Sementara itu, class weight memberikan pengaruh yang relatif terbatas terhadap F1-macro secara agregat, tetapi memberikan peningkatan pada kelas Analysis dan Backdoor. Oleh karena itu, komponen tersebut tetap dipertahankan dalam konfigurasi pipeline final.
